@@ -1,0 +1,29 @@
+faster-whisper>=1.0.0
+playwright>=1.40.0
+google-auth>=2.0.0
+google-auth-oauthlib>=1.0.0
+google-api-python-client>=2.0.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+numpy>=1.24.0
+sounddevice>=0.4.6
+soundfile>=0.12.1
+pulsectl>=23.5.2
+
+# LuxTTS deps (from /home/user/LuxTTS)
+# torch + torchaudio installed separately with CUDA:
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
+lhotse
+safetensors
+vocos
+pydub
+librosa
+transformers<=4.57.6
+cn2an
+inflect
+jieba
+pypinyin
+setuptools<81
+tensorboard
+# piper_phonemize: --find-links https://k2-fsa.github.io/icefall/piper_phonemize.html
+# LinaCodec: git+https://github.com/ysharma3501/LinaCodec.git

@@ -1,0 +1,28 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Env / secrets
+.env
+credentials.json
+token.json
+
+# Voice model (large files)
+voice_model/
+my_voice.wav
+
+# Temp / debug
+/tmp/
+*.wav
+*.mp3
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
