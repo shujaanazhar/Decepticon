@@ -6,13 +6,12 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-from dotenv import load_dotenv
 
-load_dotenv()
+import config
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
-CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_FILE", "credentials.json")
-TOKEN_FILE = os.getenv("GOOGLE_TOKEN_FILE", "token.json")
+CREDENTIALS_FILE = config.GOOGLE_CREDENTIALS_FILE
+TOKEN_FILE = config.GOOGLE_TOKEN_FILE
 
 
 def get_calendar_service():

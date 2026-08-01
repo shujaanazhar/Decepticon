@@ -1,21 +1,12 @@
 """LLM decision layer — uses local Ollama to decide what (if anything) to say."""
 
-import os
 import requests
-import json
-from dotenv import load_dotenv
 
-load_dotenv()
+import config
 
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
-BOT_PERSONA = os.getenv(
-    "BOT_PERSONA",
-    "You are attending this Google Meet on behalf of the user. "
-    "Be concise. Only respond when directly addressed or when you have something important to contribute. "
-    "Keep responses under 3 sentences. "
-    "If you don't need to say anything, reply with exactly: <SILENT>",
-)
+OLLAMA_HOST = config.OLLAMA_HOST
+OLLAMA_MODEL = config.OLLAMA_MODEL
+BOT_PERSONA = config.BOT_PERSONA
 
 
 class ConversationMemory:

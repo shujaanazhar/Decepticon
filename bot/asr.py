@@ -1,10 +1,8 @@
 """ASR using faster-whisper — transcribes audio chunks from the meeting."""
 
-import os
 from faster_whisper import WhisperModel
-from dotenv import load_dotenv
 
-load_dotenv()
+import config
 
 _model = None
 
@@ -12,7 +10,7 @@ _model = None
 def get_model():
     global _model
     if _model is None:
-        size = os.getenv("WHISPER_MODEL", "small")
+        size = config.WHISPER_MODEL
         print(f"[asr] Loading Whisper model: {size}")
         # device="cuda" uses GPU; compute_type="int8_float16" saves VRAM
         _model = WhisperModel(size, device="cuda", compute_type="int8_float16")

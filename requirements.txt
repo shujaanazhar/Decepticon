@@ -1,29 +1,26 @@
-faster-whisper>=1.0.0
-playwright>=1.40.0
+# ── Core: needed by both backends ────────────────────────────────────────────
 google-auth>=2.0.0
 google-auth-oauthlib>=1.0.0
 google-api-python-client>=2.0.0
 python-dotenv>=1.0.0
 requests>=2.31.0
+
+# ── Attendee backend ─────────────────────────────────────────────────────────
+# Just the webhook receiver. If you only run BOT_BACKEND=attendee, nothing
+# below this section is required.
+Flask>=3.0.0
+
+# ── Local backend ────────────────────────────────────────────────────────────
+# Browser automation, speech in, speech out.
+faster-whisper>=1.0.0
+playwright>=1.40.0
+chatterbox-tts>=0.1.7
 numpy>=1.24.0
 sounddevice>=0.4.6
 soundfile>=0.12.1
 pulsectl>=23.5.2
 
-# LuxTTS deps (from /home/user/LuxTTS)
-# torch + torchaudio installed separately with CUDA:
+# torch + torchaudio are CUDA-specific, so install them first, separately:
 #   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
-lhotse
-safetensors
-vocos
-pydub
-librosa
-transformers<=4.57.6
-cn2an
-inflect
-jieba
-pypinyin
-setuptools<81
-tensorboard
-# piper_phonemize: --find-links https://k2-fsa.github.io/icefall/piper_phonemize.html
-# LinaCodec: git+https://github.com/ysharma3501/LinaCodec.git
+# Then fetch the browser:
+#   playwright install chromium

@@ -1,54 +1,81 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code when working in this repository.
 
-## Project Overview
+## What this is
 
-**Decepticons** is an AI-powered Google Meet bot that autonomously joins scheduled meetings, transcribes speech, decides whether to respond using a local LLM, and speaks with a cloned voice.
+**Decepticon** attends Google Meet calls from the user's calendar. It has two
+interchangeable backends and picks one at startup:
 
-## Environment Setup
+- **local** — Playwright drives Chrome, Faster-Whisper transcribes, Ollama
+  decides whether to speak, Chatterbox synthesizes the reply in a cloned voice.
+  This is the only backend that can talk.
+- **attendee** — the hosted Attendee service joins instead and posts transcripts
+  to a webhook. Listen-only by design.
 
-All Python commands use the local venv:
-```bash
-.venv/bin/python <script>
-```
+Selection lives in `bot/config.py::resolve_backend()`: `BOT_BACKEND=auto` (the
+default) picks attendee when `ATTENDEE` is set in `.env`, otherwise local.
 
-Key environment variables (see `.env.example`):
-- `OLLAMA_MODEL` / `OLLAMA_HOST` — local LLM (default: mistral at localhost:11434)
-- `LUXTTS_PATH` — path to external LuxTTS repo
-- `VOICE_REFERENCE_WAV` — WAV file for zero-shot voice cloning
-- `WHISPER_MODEL` — Faster-Whisper model size (default: small)
-- `CHROME_PROFILE_DIR` — existing Chrome profile with Google account signed in
-- `BOT_PERSONA` — system prompt controlling bot behavior
-
-## Running
+## Commands
 
 ```bash
-# Validate all dependencies before running
-.venv/bin/python check_deps.py
-
-# Run the bot
-.venv/bin/python bot/main.py
+.venv/bin/python check_deps.py    # backend-aware pre-flight
+.venv/bin/python bot/main.py      # run
 ```
+
+All Python goes through `.venv/bin/python`.
 
 ## Architecture
 
-The bot runs a single `asyncio` event loop in `bot/main.py`:
+`bot/main.py` owns the loop that polls Google Calendar, schedules each meeting,
+and dispatches it. It knows nothing about *how* a meeting gets attended — that
+is entirely behind `backends/base.py::MeetingBackend`, which is three methods:
+`startup()`, `attend(event)`, `shutdown()`.
 
-1. **Startup**: preloads Whisper + LuxTTS models, sets up PulseAudio virtual devices
-2. **Scheduling**: polls Google Calendar (24h lookahead) and schedules meeting joins
-3. **Meeting loop**: for each meeting, Playwright automates Chrome to join the Meet URL, then loops:
-   - Record audio chunk → transcribe (Faster-Whisper) → ask LLM if bot should respond → if yes: synthesize speech (LuxTTS) → unmute → play audio → mute
+Adding a backend means adding a module under `bot/backends/` and a branch in
+`backends/__init__.py::get_backend()`. Nothing in `main.py` should change.
 
-**Module responsibilities:**
-- `main.py` — orchestrator, asyncio loop, model preloading, scheduling
-- `meet_driver.py` — Playwright automation for joining/leaving Meet, mute control
-- `gcalendar.py` — Google Calendar OAuth + event polling
-- `audio_pipeline.py` — PulseAudio null sink + loopback virtual audio device setup
-- `asr.py` — Faster-Whisper transcription
-- `tts.py` — LuxTTS voice synthesis; falls back to `espeak-ng` if unavailable
-- `llm.py` — Ollama HTTP API for LLM-based response decisions
+**Imports are lazy on purpose.** `get_backend()` imports the chosen backend only,
+and `local.py` imports torch/Whisper/Playwright inside its methods rather than at
+module scope. Someone running attendee-only must not need the local stack
+installed. Don't hoist those imports to the top of a module.
 
-**Audio pipeline**: PulseAudio virtual sink captures meeting audio; a loopback device injects synthesized speech back as a virtual microphone. GPU (CUDA) is used for both Whisper and LuxTTS inference.
+## Conventions
 
-**Google auth**: Uses OAuth installed app flow; `credentials.json` + `token.json` store the auth state. Chrome profile reuse avoids re-authenticating to Google Meet.
+- **Config comes from `bot/config.py`, never `os.getenv` at a call site.** It is
+  the only module that calls `load_dotenv()`.
+- Blocking work (recording, transcription, synthesis, playback, HTTP) belongs in
+  `asyncio.to_thread` — the orchestrator schedules concurrent meetings and a
+  blocking call stalls all of them.
+- Both backends write transcripts through `transcripts.Transcript`, appending
+  per utterance so a crash mid-meeting still leaves a usable file.
+- Never commit `.env`, `credentials.json`, `token.json`, or `my_voice.wav`.
+
+## Mic handling — read before touching `meet_driver.py`
+
+Meet labels the mic button by **what a click would do**, not by current state:
+`"Turn on microphone"` means it is currently *muted*. Getting this backwards is
+why an earlier version sat silent through entire meetings.
+
+Two rules, both learned the hard way:
+
+1. **Verify every state change.** `_set_mic()` clicks, re-reads the label, and
+   retries. Clicks get swallowed by overlays and animations; assuming one landed
+   is what broke it before.
+2. **Never click `[aria-label*="microphone"]` to open a device menu.** That
+   selector matches the mute *toggle*. The old pre-join code did this and muted
+   the bot on the way in. Chrome already defaults to the virtual mic because
+   `audio_pipeline.setup_virtual_audio()` sets it as the PulseAudio default
+   source before the browser launches — there is nothing to select.
+
+`speak()` is the only sanctioned way to make sound: it unmutes, verifies,
+waits `UNMUTE_SETTLE_SEC` for WebRTC to start transmitting, plays, then re-mutes.
+Skipping the settle clips the opening words and can drop short replies entirely.
+If unmuting fails it refuses to play rather than talking into a dead mic.
+
+## Testing
+
+There is no test suite in the repo. The mic state machine and the orchestrator
+are both testable with fakes — `MeetDriver` only needs `_page` set, and
+`Orchestrator` takes any `MeetingBackend`. Prefer that over reasoning about
+Playwright behaviour in the abstract.

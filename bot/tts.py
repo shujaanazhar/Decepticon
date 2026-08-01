@@ -9,19 +9,20 @@ import os
 import subprocess
 import tempfile
 
-from dotenv import load_dotenv
+import config
 
-load_dotenv()
-
-VOICE_REFERENCE_WAV = os.getenv("VOICE_REFERENCE_WAV", "")
+VOICE_REFERENCE_WAV = config.VOICE_REFERENCE_WAV
 
 _model = None
+_load_attempted = False
 
 
-def _load_model():
-    global _model
-    if _model is not None:
+def load_model():
+    """Load Chatterbox once. Returns None if unavailable — caller falls back to espeak."""
+    global _model, _load_attempted
+    if _model is not None or _load_attempted:
         return _model
+    _load_attempted = True
 
     try:
         from chatterbox.tts import ChatterboxTTS
@@ -41,7 +42,7 @@ def synthesize(text: str, output_path: str = None) -> str:
         output_path = tmp.name
         tmp.close()
 
-    model = _load_model()
+    model = load_model()
 
     if model is not None:
         _synthesize_chatterbox(text, output_path, model)
