@@ -127,10 +127,33 @@ bot/
 Backend modules are imported only when selected, so an attendee-only setup
 never needs torch, Whisper or Playwright installed.
 
+## Tests
+
+```bash
+.venv/bin/python tests/run_all.py
+```
+
+Plain scripts, no pytest. They cover the mic state machine (against a fake Meet
+page — no browser launched) and the orchestrator (with a fake backend).
+
 ## Known limits
 
 - Linux only — the audio pipeline assumes PulseAudio/PipeWire.
 - The local backend needs a GPU; Whisper and Chatterbox both want VRAM.
 - Meet's DOM changes without warning. If joining breaks, check the screenshots
   the driver leaves in `/tmp/meet_debug*.png`.
-- No tests around the browser automation itself.
+- Nothing tests the real browser automation — only the logic around it.
+
+## A note on consent
+
+This bot records and transcribes the people in your meetings. Tell them it's
+there. Whether recording is lawful depends on where everyone is sitting.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). If you want to make the local backend
+speak reliably, start with the mic debugging notes there.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
